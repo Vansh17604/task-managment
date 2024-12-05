@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useMutation } from "react-query";
 import { useAppContext } from "@/context/AppContext";
-import * as apiClient from "../api-client"; // Ensure this imports your API functions
+import * as apiClient from "../api-client"; 
 
 export const EditBoard = () => {
   const { showToast } = useAppContext();
@@ -17,9 +17,9 @@ export const EditBoard = () => {
   useEffect(() => {
     const fetchBoard = async () => {
       try {
-        const response = await apiClient.getBoard(boardId!); // Fetch the board data
-        setBoardName(response.name); // Set the fetched name in state
-        setIsLoading(false); // Set loading to false after the board is fetched
+        const response = await apiClient.getBoard(boardId!); 
+        setBoardName(response.name); 
+        setIsLoading(false); 
       } catch (error) {
         console.error("Error fetching board:", error);
         setIsLoading(false);
@@ -31,13 +31,13 @@ export const EditBoard = () => {
     }
   }, [boardId]);
 
-  // Update board mutation
+  
   const updateBoardMutation = useMutation(
     (data: { boardId: string; name: string }) => apiClient.updateBoard(data.boardId, data.name),
     {
       onSuccess: () => {
         showToast({ message: "Board updated successfully!", type: "SUCCESS" });
-        navigate("/"); // Navigate to the homepage after successful update
+        navigate("/"); 
       },
       onError: (error: Error) => {
         showToast({ message: error.message, type: "ERROR" });
@@ -45,11 +45,11 @@ export const EditBoard = () => {
     }
   );
 
-  // Delete board mutation
+
   const deleteBoardMutation = useMutation((boardId: string) => apiClient.deleteBoard(boardId), {
     onSuccess: () => {
       showToast({ message: "Board deleted successfully!", type: "SUCCESS" });
-      navigate("/"); // Navigate to the homepage after deletion
+      navigate("/"); 
     },
     onError: (error: Error) => {
       showToast({ message: error.message, type: "ERROR" });
@@ -69,7 +69,7 @@ export const EditBoard = () => {
   };
 
   if (isLoading) {
-    return <div>Loading...</div>; // Show loading state while fetching the board data
+    return <div>Loading...</div>; 
   }
 
   return (
@@ -86,7 +86,7 @@ export const EditBoard = () => {
               id="name"
               type="text"
               value={boardName}
-              onChange={(e) => setBoardName(e.target.value)} // Update state on input change
+              onChange={(e) => setBoardName(e.target.value)} 
               className="w-full mt-1"
             />
           </div>

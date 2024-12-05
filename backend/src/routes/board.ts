@@ -1,111 +1,152 @@
-import express, { Request, Response } from "express";
-import { check, validationResult } from "express-validator";
-import verifyToken from "../middleware/auth";
-import Board from "../models/board";
+import express, { Request, Response } from 'express';
+import verifyToken from '../middleware/auth';
+import Board from '../models/board';
+import Task from '../models/task';
 
 const router = express.Router();
 
-router.post(
-  "/create",
-  verifyToken,
-  [
-    check("name", "Board name is required").isString().notEmpty(),
-  ],
-  async (req: Request, res: Response) => {
-    console.log("Create board route hit");  
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      res.status(400).json({ message: errors.array() });
-    }
 
-    try {
-      const newBoard = new Board({
-        name: req.body.name,
-        tasks: [],
-      });
+router.post("/create", verifyToken, async (req: Request, res: Response) => {
+  try {
+    const { name, task } = req.body;
 
+    const newBoard = new Board({
+      name,
+      userId: req.userId,
+    });
+
+    await newBoard.save();
+    if (task && task.length > 0) {
+      const boardTasks = task.map((taskItem: any) => ({
+        title: taskItem.title,
+        description: taskItem.description || '',
+        status: taskItem.status || 'TODO',
+        boardId: newBoard._id,
+      }));
+
+      const createdTasks = await Task.insertMany(boardTasks);
+      newBoard.task = createdTasks.map(t => t._id);
       await newBoard.save();
-       res.status(201).json({
+
+      res.status(201).json({
+        message: "Board and tasks created successfully",
+        board: {
+          ...newBoard.toObject(),
+          tasks: createdTasks,
+        },
+      });
+    } else {
+      res.status(201).json({
         message: "Board created successfully",
         board: newBoard,
       });
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: "Something went wrong" });
     }
-  }
-);
-router.get("/:id", verifyToken, async (req: Request, res: Response) => {
-  try {
-    const board = await Board.findById(req.params.id);
-    if (!board) {
-       res.status(404).json({ message: "Board not found" });
-    }
-    res.json(board);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Something went wrong" });
+    console.error("Board creation error:", error);
+    res.status(500).json({ message: "Something went wrong", error: error instanceof Error ? error.message : error });
   }
 });
-
 
 
 router.get("/", verifyToken, async (req: Request, res: Response) => {
   try {
-    const boards = await Board.find();
+    const boards = await Board.find({ userId: req.userId })
+      .populate('task')  
+      .sort({ createdAt: -1 });
+
     res.json(boards);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Something went wrong" });
+    console.error("Fetch boards error:", error);
+    res.status(500).json({ message: "Failed to fetch boards" });
   }
 });
 
 
-router.put(
-  "/:id/edit",
-  verifyToken,
-  [
-    check("name", "Board name is required").isString().notEmpty(),
-  ],
-  async (req: Request, res: Response) => {
-  
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      res.status(400).json({ message: errors.array() });
+router.get("/:boardId", verifyToken, async (req: Request, res: Response) => {
+  try {
+    const board = await Board.findOne({
+      _id: req.params.boardId,
+      userId: req.userId,
+    }).populate('task');  
+
+    if (!board) {
+       res.status(404).json({ message: "Board not found" });
     }
 
-    try {
-      const board = await Board.findById(req.params.id);
-      if (!board) {
-        res.status(404).json({ message: "Board not found" });
-        return;
-      }
+    res.json(board);
+  } catch (error) {
+    console.error("Fetch board error:", error);
+    res.status(500).json({ message: "Failed to fetch board" });
+  }
+});
 
-      board.name = req.body.name;
+
+router.put("/:boardId", verifyToken, async (req: Request, res: Response) => {
+  try {
+    const { name, task } = req.body;
+
+    const board = await Board.findOne({
+      _id: req.params.boardId,
+      userId: req.userId,
+    });
+
+    if (!board) {
+      res.status(404).json({ message: "Board not found" });
+      return;
+    }
+
+    
+    board.name = name;
+    await board.save();
+
+ 
+    if (task && task.length > 0) {
+      await Task.deleteMany({ boardId: board._id });
+
+      const boardTasks = task.map((taskItem: any) => ({
+        title: taskItem.title,
+        description: taskItem.description || '',
+        status: taskItem.status || 'TODO',
+        boardId: board._id,
+      }));
+
+      const createdTasks = await Task.insertMany(boardTasks);
+      board.task = createdTasks.map(t => t._id);
       await board.save();
 
       res.json({
-        message: "Board updated successfully",
-        board,
+        board: {
+          ...board.toObject(),
+          tasks: createdTasks,
+        },
       });
-    } catch (error) {
-      console.error(error);
-       res.status(500).json({ message: "Something went wrong" });
+    } else {
+      res.json(board); 
     }
+  } catch (error) {
+    console.error("Board update error:", error);
+    res.status(500).json({ message: "Failed to update board" });
   }
-);
+});
 
-router.delete("/:id/delete", verifyToken, async (req: Request, res: Response) => {
+router.delete("/:boardId", verifyToken, async (req: Request, res: Response) => {
   try {
-    const board = await Board.findByIdAndDelete(req.params.id);
+    const board = await Board.findOneAndDelete({
+      _id: req.params.boardId,
+      userId: req.userId,
+    });
+
     if (!board) {
-      res.status(404).json({ message: "Board not found" });
+     res.status(404).json({ message: "Board not found" });
+     return;
     }
+
+    await Task.deleteMany({ boardId: board._id });
 
     res.json({ message: "Board deleted successfully" });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Something went wrong" });
+    console.error("Board delete error:", error);
+    res.status(500).json({ message: "Failed to delete board" });
   }
 });
 

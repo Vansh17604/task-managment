@@ -1,4 +1,4 @@
-import { RegisterFormData } from "./page/Register";
+
 import { SignInFormData } from "./page/Login";
 import { UserType } from "../../backend/src/models/user";
 
@@ -14,22 +14,23 @@ export const fetchCurrentUser = async (): Promise<UserType> => {
   return response.json();
 };
 
-export const register = async (formData: RegisterFormData) => {
+export const register = async (formData: FormData) => {
   const response = await fetch(`${API_BASE_URL}/api/users/register`, {
     method: "POST",
     credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(formData),
+    body: formData, 
   });
 
   const responseBody = await response.json();
 
   if (!response.ok) {
-    throw new Error(responseBody.message);
+    throw new Error(responseBody.message || "Registration failed");
   }
+
+  return responseBody;
 };
+
+
 
 export const signIn = async (formData: SignInFormData) => {
   const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
@@ -83,14 +84,27 @@ export const fetchBoards = async () => {
   return response.json();
 };
 
-export const createBoard = async (name: string) => {
+export type Task = {
+  title: string;
+  description: string;
+  status: string;
+};
+
+export type Board = {
+  _id: string;
+  name: string;
+  task: Task[];
+};
+
+
+export const createBoard = async (name: string, task: Task[]) => {
   const response = await fetch(`${API_BASE_URL}/api/boards/create`, {
     method: "POST",
     credentials: "include",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({ name, task }), 
   });
 
   if (!response.ok) {
@@ -100,8 +114,11 @@ export const createBoard = async (name: string) => {
   return response.json();
 };
 
-export const getBoard = async (boardId: string) => {
-  const response = await fetch(`${API_BASE_URL}/api/boards/${boardId}`, { credentials: "include" });
+
+export const getBoard = async (boardId: string): Promise<Board> => {
+  const response = await fetch(`${API_BASE_URL}/api/boards/${boardId}`, { 
+    credentials: "include" 
+  });
 
   if (!response.ok) {
     throw new Error("Error fetching board");
@@ -110,14 +127,15 @@ export const getBoard = async (boardId: string) => {
   return response.json();
 };
 
-export const updateBoard = async (boardId: string, name: string) => {
-  const response = await fetch(`${API_BASE_URL}/api/boards/${boardId}/edit`, {
+
+export const updateBoard = async (boardId: string, name: string, task: Task[]) => {
+  const response = await fetch(`${API_BASE_URL}/api/boards/${boardId}`, {
     method: "PUT",
     credentials: "include",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({ name, task }), 
   });
 
   if (!response.ok) {
@@ -129,7 +147,7 @@ export const updateBoard = async (boardId: string, name: string) => {
 
 
 export const deleteBoard = async (boardId: string) => {
-  const response = await fetch(`${API_BASE_URL}/api/boards/${boardId}/delete`, {
+  const response = await fetch(`${API_BASE_URL}/api/boards/${boardId}`, {
     method: "DELETE",
     credentials: "include",
   });
@@ -142,9 +160,75 @@ export const deleteBoard = async (boardId: string) => {
 };
 
 
-export const fetchUserProfile = async (): Promise<UserType> => {
-  const response = await fetch(`${API_BASE_URL}/api/users/me`, {
-    credentials: "include", 
+export const addTaskToBoard = async (boardId: string, task: Task) => {
+  const response = await fetch(`${API_BASE_URL}/api/boards/${boardId}/task`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(task), 
+  });
+
+  if (!response.ok) {
+    throw new Error("Error adding task to board");
+  }
+
+  return response.json();
+};
+
+
+export const updateTaskOnBoard = async (boardId: string, taskId: string, task: Task) => {
+  const response = await fetch(`${API_BASE_URL}/api/boards/${boardId}/task/${taskId}`, {
+    method: "PUT",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(task), 
+  });
+
+  if (!response.ok) {
+    throw new Error("Error updating task");
+  }
+
+  return response.json();
+};
+
+
+export const deleteTaskFromBoard = async (boardId: string, taskId: string) => {
+  const response = await fetch(`${API_BASE_URL}/api/boards/${boardId}/task/${taskId}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    throw new Error("Error deleting task");
+  }
+
+  return response.json();
+};
+
+
+export const updateUserProfile = async (formData: FormData) => {
+  const response = await fetch(`${API_BASE_URL}/api/users/profile/edit`, {
+    method: "PUT",
+    credentials: "include",
+    body: formData, 
+  });
+
+  const responseBody = await response.json();
+
+  if (!response.ok) {
+    throw new Error(responseBody.message || "Profile update failed");
+  }
+
+  return responseBody;
+};
+
+export const fetchProfile = async (): Promise<UserType> => {
+  const response = await fetch(`${API_BASE_URL}/api/users/profile`, {
+    credentials: "include",
   });
 
   if (!response.ok) {
@@ -154,51 +238,50 @@ export const fetchUserProfile = async (): Promise<UserType> => {
   return response.json();
 };
 
-
-export const updateUserProfile = async (formData: { name: string; email: string; country: string; profilephoto: File | null }) => {
-  const formDataToSend = new FormData();
-  formDataToSend.append("name", formData.name);
-  formDataToSend.append("email", formData.email);
-  formDataToSend.append("country", formData.country);
-
-  if (formData.profilephoto) {
-    formDataToSend.append("profilephoto", formData.profilephoto);
-  }
-
-  const response = await fetch(`${API_BASE_URL}/api/users/me/profile`, {
-    method: "PUT",
-    credentials: "include",
-    body: formDataToSend,
-  });
-
-  if (!response.ok) {
-    const body = await response.json();
-    throw new Error(body.message);
-  }
-
-  return response.json();
-};
-
-export const uploadProfilePic = async (formData: FormData): Promise<any> => {
+export const forgotPassword = async (email: string) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/users/upload-profilephoto`, {
+    const response = await fetch(`${API_BASE_URL}/api/forgot-password`, {
       method: "POST",
       headers: {
-    
+        "Content-Type": "application/json",
       },
-      body: formData,
-      credentials: "include", 
+      body: JSON.stringify({ email }),
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Error uploading profile picture: ${errorText}`);
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Failed to request password reset");
     }
 
-    return await response.json();
+    const data = await response.json();
+    return data; 
   } catch (error) {
-    console.error("Error in uploadProfilePic:", error);
+    console.error("Error in forgotPassword:", error);
     throw error; 
   }
 };
+
+export const resetPassword = async (token: string, password: string) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/reset-password/${token}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ password }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Failed to reset password");
+    }
+
+    const data = await response.json();
+    return data; 
+  } catch (error) {
+    console.error("Error in resetPassword:", error);
+    throw error; 
+  }
+};
+
 

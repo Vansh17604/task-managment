@@ -1,40 +1,19 @@
-import mongoose from 'mongoose';
+import mongoose, { Document, Schema } from 'mongoose';
+import { Task } from './task';  
 
-export type Task = {
+export interface BoardType extends Document {
   name: string;
-  
-};
+  task: mongoose.Types.ObjectId[];  
+  userId: mongoose.Types.ObjectId;  
+}
 
-export type BoardType = {
-  _id: string;
-  name: string;
-  tasks: Task[];
-};
-
-const taskSchema = new mongoose.Schema(
-  {
-    name: { type: String, required: true },
-  },
-  { timestamps: true }
-);
-
-const boardSchema = new mongoose.Schema(
+const boardSchema = new Schema(
   {
     name: { type: String, required: true, minlength: 3 },
-    tasks: {
-      type: [taskSchema],
-      default: [],  
-      validate: {
-        validator: function (value: any) {
-          return true;  
-        },
-        message: 'A board must have at least one task', 
-      },
-    },
+    task: [{ type: mongoose.Types.ObjectId, ref: 'Task' }],  
+    userId: { type: mongoose.Types.ObjectId, ref: 'User', required: true }  
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
 const Board = mongoose.model<BoardType>('Board', boardSchema);

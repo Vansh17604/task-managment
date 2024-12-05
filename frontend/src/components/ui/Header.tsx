@@ -1,56 +1,37 @@
-import React, { useState, useEffect } from "react";
-import { FaUser, FaSignInAlt } from "react-icons/fa"; 
-import { useNavigate } from "react-router-dom";
-import SignoutButton from "../SignoutButton"; 
+import { useAppContext } from "../../context/AppContext";
+import { FaUser, FaSignInAlt } from "react-icons/fa";
+import { Link } from "react-router-dom";
+import SignoutButton from "../SignoutButton";
 
-const Header: React.FC = () => {
-  const [loggedIn, setLoggedIn] = useState<boolean>(false);
-  const navigate = useNavigate(); 
-
-  useEffect(() => {
-    const isLoggedIn = localStorage.getItem("login") === "true"; 
-    setLoggedIn(isLoggedIn);
-  }, []);
-
-  // Handle login button
-  const handleLogin = () => {
-    navigate("/login"); 
-  };
-
-  
-  const handleProfile = () => {
-    navigate("/profile"); 
-  };
+const Header = () => {
+  const { isLoggedIn } = useAppContext();
 
   return (
-    <header className="flex justify-between items-center p-5 bg-blue-600 text-white">
- 
-      <div className="text-2xl font-semibold">TaskM</div>
+    <header className="flex justify-between items-center p-6 bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg">
+      <div className="text-3xl font-extrabold tracking-wider">
+        <Link to="/">TaskM</Link>
+      </div>
 
-     
-      <div className="flex items-center space-x-4">
-
-        {loggedIn && (
-          <button
-            onClick={handleProfile}
-            className="flex items-center space-x-2 p-2 bg-blue-700 rounded-md"
-          >
-            <FaUser />
-            <span>Profile</span>
-          </button>
-        )}
-
-        {/* Login/Logout Button */}
-        {loggedIn ? (
-          <SignoutButton /> // Show SignOutButton if logged in
+      <div className="flex items-center space-x-6">
+        {isLoggedIn ? (
+          <>
+            <Link
+              to="/profile"
+              className="flex items-center space-x-2 p-3 bg-blue-800 rounded-lg hover:bg-blue-700 transition duration-200 ease-in-out"
+            >
+              <FaUser className="text-xl" />
+              <span className="text-lg">Profile</span>
+            </Link>
+            <SignoutButton />
+          </>
         ) : (
-          <button
-            onClick={handleLogin}
-            className="flex items-center space-x-2 p-2 bg-blue-700 rounded-md"
+          <Link
+            to="/login"
+            className="flex items-center space-x-2 p-3 bg-blue-800 rounded-lg hover:bg-blue-700 transition duration-200 ease-in-out"
           >
-            <FaSignInAlt />
-            <span>Login</span>
-          </button>
+            <FaSignInAlt className="text-xl" />
+            <span className="text-lg">Login</span>
+          </Link>
         )}
       </div>
     </header>
